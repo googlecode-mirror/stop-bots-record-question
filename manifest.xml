@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE extension SYSTEM "ext-1.0.dtd">
+
+<!--
+/**
+ * Records which pun_stop_bots question a user answered for their registration
+ *
+ * @copyright (C) 2013 Jesse Jones
+ * @license http://www.gnu.org/licenses/gpl.html GPL version 2
+ * @package stop_bots_record_question
+ */
+-->
+
+	<extension engine="1.0">
+	<id>stop_bots_record_question</id>
+	<title>Stop Bots Record Question</title>
+	<version>1.0</version>
+	<description>Records which pun_stop_bots question a user answered for their registration.</description>
+	<author>Jesse Jones</author>
+	<minversion>1.4</minversion>
+	<maxtestedon>1.4.2</maxtestedon>
+	<dependencies>
+		<dependency>pun_stop_bots</dependency>
+	</dependencies>
+	<install><![CDATA[
+
+if (!$forum_db->field_exists('users', 'stop_bots_question')) {
+	$forum_db->add_field('users', 'stop_bots_question', 'TEXT', true);
+}
+	]]></install>
+
+	<uninstall><![CDATA[
+$forum_db->drop_field('users', 'stop_bots_question', false);
+	]]></uninstall>
+
+	<hooks>
+		<hook id="rg_register_pre_add_user" priority="9"><![CDATA[
+$query = array(
+   'SELECT'   => 'question',
+   'FROM'     => 'pun_stop_bots_questions',
+   'WHERE'    => 'id = '.$question_id
+);
+$result = $forum_db->query_build($query) or error(__FILE__, __LINE__);
+$data = $forum_db->fetch_assoc($result);
+$question_text = $data['question'];
+$user_info['stop_bots_question'] = $question_text;
+		]]></hook>
+		<hook id="fn_add_user_qr_insert_user" priority="9"><![CDATA[
+$query['INSERT'] .= ',stop_bots_question';
+$query['VALUES'] .= ', \''.$forum_db->escape($user_info['stop_bots_question']).'\'';
+		]]></hook>
+		<hook id="pf_change_details_about_pre_user_private_info" priority="9"><![CDATA[
+if ($forum_user['is_admmod'] && $user['stop_bots_question'] != '')
+	$forum_page['user_private']['stop_bots_question'] = '<li><span>Stop Bots Question: <em>'.forum_htmlencode($user['stop_bots_question']).'</em></span></li>';
+		]]></hook>
+	</hooks>
+
+</extension>
